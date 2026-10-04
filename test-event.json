@@ -1,0 +1,14 @@
+{
+  "headers": {
+    "host": "example.com"
+  },
+  "rawPath": "/",
+  "requestContext": {
+    "http": {
+      "method": "GET"
+    }
+  },
+  "queryStringParameters": null,
+  "body": null,
+  "isBase64Encoded": false
+}
