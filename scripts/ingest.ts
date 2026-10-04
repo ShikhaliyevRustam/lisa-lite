@@ -1,7 +1,7 @@
 import postgres from 'postgres'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import OpenAI from 'openai'
-import { chunkMarkdown } from './chunker.ts'
+import { chunkMarkdown } from '../src/chunker.ts'
 
 const sql = postgres(process.env.DATABASE_URL!)
 const s3 = new S3Client({ region: 'eu-central-1' })

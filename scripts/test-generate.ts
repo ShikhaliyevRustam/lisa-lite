@@ -1,5 +1,5 @@
-import { hybridSearch } from './hybridSearch.ts'
-import { answerQuestion } from './generate.ts'
+import { hybridSearch } from '../src/hybridSearch.ts'
+import { answerQuestion } from '../src/generate.ts'
 
 const chunks = await hybridSearch(process.argv[2], 5)
 console.log('RETRIEVED CHUNKS:', chunks.length)

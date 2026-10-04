@@ -1,4 +1,4 @@
-import { chunkMarkdown } from './chunker.ts'
+import { chunkMarkdown } from '../src/chunker.ts'
 
 const sample = `# API Guide
 

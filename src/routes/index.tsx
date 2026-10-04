@@ -5,7 +5,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import postgres from 'postgres'
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
-import { answerQuestion } from '../../generate.ts'
+import { answerQuestion } from '../generate.ts'
 
 const askQuestion = createServerFn()
     .validator((question: string) => question)
