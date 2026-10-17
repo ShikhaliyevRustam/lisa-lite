@@ -20,6 +20,9 @@ async function ingestDocument(documentId: number) {
     const expectedCount = chunks.length
     let successCount = 0
 
+    await sql`UPDATE documents SET status = 'processing' WHERE id = ${documentId}`
+    await sql`DELETE FROM chunks WHERE document_id = ${documentId}`
+
     for (const chunk of chunks) {
       try {
         const embeddingResponse = await openai.embeddings.create({

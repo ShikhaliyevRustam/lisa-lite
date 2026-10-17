@@ -4,6 +4,7 @@ dist
 dist-ssr
 *.local
 .env
+env-temp.json
 .nitro
 .tanstack
 .wrangler
@@ -11,3 +12,6 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+worker-dist/
+*.zip
+eval/results-run*.json

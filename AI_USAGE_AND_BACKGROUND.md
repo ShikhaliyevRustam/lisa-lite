@@ -1,15 +1,14 @@
 # Background and AI Tool Usage
 
-I'd built a related project before this one — a Kubernetes-based job orchestrator that routes AI workloads based on policy rules (carbon intensity, urgency, SLOs). A lot of the thinking behind that project shows up here too: splitting work across services connected by a queue, building in an explain/trace mechanism rather than leaving decisions as a black box, and writing down what the system doesn't do well instead of hiding it. The specific stack for this assignment was new to me though — TanStack Start, Lambda, SQS, pgvector, and the RAG side of things in general — so I was learning that as I built.
+I built a related project before this one: a Kubernetes job orchestrator that routes AI workloads using policy rules (carbon intensity, urgency, SLOs). Some of that thinking carried over here: separating work with a queue, recording why a decision was made instead of leaving it opaque, and writing down what the system doesn't do well. The stack for this assignment was new to me, though. TanStack Start, Lambda, SQS, pgvector and retrieval-augmented generation in general were things I learned while building.
 
-I used Claude a lot while building this, for writing code, explaining things I didn't know, and putting together documentation. But I ran everything myself — every deploy, every test, every bug. A few of the real ones worth mentioning:
+I used Claude heavily: to write code, to explain things I didn't know, and to draft documentation. I ran every command, deployment and test myself, and Claude helped me work out what the results meant. Some of what we ran into:
 
-The deploy pipeline had a stale-build bug that bit me more than once: a packaging step would fail silently and I'd end up redeploying old code without realizing it. I caught it by checking the code hash before and after each deploy.
+- A deploy script kept reusing an old build because a zip step failed without stopping anything. Comparing the code hash after each deploy exposed it.
+- Two Lambda functions were missing environment variables at different times. CloudWatch logs showed which one.
+- Chunk size was measured in lines instead of characters, so one very long paragraph became one huge chunk. It only appeared when I tested the 300,000-word document.
+- Ingestion could mark a document `ready` after processing only part of it, with no error. I found it because a planted fact near the end of the document could not be found. Checking the chunk count against the file confirmed it, and the ingestion code now records success per chunk.
+- When I wrote up the evaluation, the explanation for two failed questions (that retrieval got worse as the corpus grew) came from Claude and I accepted it without checking. A later check of chunk and embedding counts per document showed the README's chunks had no embeddings and one document held duplicated chunks. I rewrote that part of the report, kept the original failed run in it, and noted that I can't separate the causes completely.
+- Some uploads never triggered the worker. I ruled out a disabled event mapping and stuck queue messages, but never found the cause. It is listed as an open limitation in the README.
 
-I had two separate Lambda functions missing environment variables at different points (OPENAI_API_KEY on one, then the same thing again on a different function) — found both by reading the actual CloudWatch logs rather than guessing.
-
-The chunking logic had a real bug that only showed up once I tested against the full 300k-word document — it was measuring chunk size by line count instead of character count, so a single very long paragraph with no line breaks became one enormous chunk instead of being split properly.
-
-The biggest one: during that same stress test, I found that the ingestion pipeline could silently mark a document "ready" even though it had only processed part of it — no error, no warning, just an incomplete result reported as a success. I confirmed this by comparing the actual stored chunk count against what the document should have produced, then fixed it so the pipeline only reports "ready" when every chunk is verified processed, and "failed" otherwise.
-
-I also ran into an intermittent issue where some uploads never triggered automatic ingestion, even though the queue and the worker both looked healthy. I wasn't able to fully pin down the cause in the time I had — I ruled out a few things (the event mapping being disabled, messages stuck in the queue) but the most likely explanation is that presigned upload URLs were expiring during long sessions. I documented this as a known, unresolved limitation rather than pretend it isn't there.
+I wrote the evaluation questions and the automatic checks with Claude's help. How the results are scored, and what they can't show, is in `EVALUATION.md`.

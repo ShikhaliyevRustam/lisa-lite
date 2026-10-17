@@ -20,6 +20,9 @@ async function ingestDocument(documentId: number) {
         const expectedCount = chunks.length
         let successCount = 0
 
+        await sql`UPDATE documents SET status = 'processing' WHERE id = ${documentId}`
+        await sql`DELETE FROM chunks WHERE document_id = ${documentId}`
+
         for (const chunk of chunks) {
             try {
                 const embeddingResponse = await openai.embeddings.create({
@@ -29,9 +32,9 @@ async function ingestDocument(documentId: number) {
                 const embedding = embeddingResponse.data[0].embedding
 
                 await sql`
-          INSERT INTO chunks (document_id, breadcrumb, content, start_line, end_line, embedding)
-          VALUES (${documentId}, ${chunk.breadcrumb}, ${chunk.content}, ${chunk.startLine}, ${chunk.endLine}, ${JSON.stringify(embedding)})
-        `
+                    INSERT INTO chunks (document_id, breadcrumb, content, start_line, end_line, embedding)
+                    VALUES (${documentId}, ${chunk.breadcrumb}, ${chunk.content}, ${chunk.startLine}, ${chunk.endLine}, ${JSON.stringify(embedding)})
+                `
                 successCount++
             } catch (err) {
                 console.error(`Failed to process chunk at line ${chunk.startLine}:`, err)
