@@ -2,7 +2,7 @@
 
 ## What this evaluation is, and what it isn't
 
-22 questions run through the same retrieval and generation code the app uses (`scripts/run-eval.ts`), against 8 ingested documents. Pass/fail comes from substring checks that I wrote after looking at the documents. A person did not grade each answer, and 22 questions cannot show that the system answers other questions reliably. Raw output from the last run is in `eval/results.json`.
+22 questions run through the same retrieval and generation code the app uses (`scripts/run-eval.ts`), against 8 ingested documents. Pass/fail comes from substring checks that I wrote after looking at the documents. A person did not grade each answer, and 22 questions cannot show that the system answers other questions reliably. Raw output from the last run is in `eval/results.json`. The questions call the answering code directly from my machine, so they do not test the upload, queue and worker path of the deployed site. That path was found broken after the evaluation (see "Bugs found while testing").
 
 In short:
 
@@ -116,10 +116,11 @@ Also changed after the first run:
 - Ingestion could mark a document `ready` after processing only part of it. Two runs stopped around Section 116 of 170 with no error, and the planted fact near the end of the document was missing. Ingestion now counts successful chunks and sets `ready` only when every chunk succeeded, otherwise `failed`.
 - An error before chunking (a missing S3 object) left a document stuck as `uploaded`. It now sets `failed`.
 - Q14's abstention was labeled `partially supported`, as described above.
+- The main app's Lambda role lacked `sqs:SendMessage`, so uploads through the deployed site failed after creating the database row. Local runs hid it because they used my own credentials. I found it after the evaluation, when an upload failed in the browser with "Upload failed" and no file reached S3.
 
 ## Known limitations
 
-- **Intermittent ingestion trigger.** Several uploads never triggered the worker, although the event source mapping was enabled and no messages were visible or in flight. I did not find the cause. Re-sending the message always worked. The upload code now checks S3's response, but a document that is never picked up stays `uploaded` forever, because nothing times it out.
+- **Uploads on the deployed site failed until the main app's role was given `sqs:SendMessage`.** The role could receive and delete queue messages but not send them, so the upload function threw after creating the database row and the browser never got to upload the file. I found this after the evaluation, and I confirmed it only by one upload: it failed before the permission was added, and afterwards went from `uploaded` to `processing` to `ready`. In early October, several uploads (documents 8–10) left a row but no file in S3, and the worker saw no message. They may have had the same cause. I did not confirm that, and the app log from one of them showed no error line, which does not fit well. Re-sending the message by script always worked. A document that is never picked up stays `uploaded` forever, because nothing times it out.
 - **Overlapping ingestion can duplicate chunks.** The logs show two worker invocations processing the same document at the same time. Delete-then-insert protects against sequential re-runs and redeliveries, not overlapping ones. This may also explain why the large document had 3,518 chunks in one run and 2,722 in another. I did not verify that.
 - **Citations are coarse.** The model attaches one or more passages to a sentence. A citation does not say which passage backs which part of the sentence.
 - **The cited-passage view shows only the cited chunk** (roughly 800 characters), not the text around it.

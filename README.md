@@ -56,11 +56,11 @@ None of these controls guarantees there are no hallucinations.
 
 ## Evaluation
 
-`EVALUATION.md` records 22 questions over 8 documents (five of 25,000+ words, one of 305,764), with expected results, the first run that found two false abstentions, how they were traced to missing embeddings and duplicated chunks, the metrics, and the limits of the evidence. Raw output of the latest run is in `eval/results.json`.
+`EVALUATION.md` records 22 questions over 8 documents (five of 25,000+ words, one of 305,764), with expected results, the first run that found two false abstentions, how they were traced to missing embeddings and duplicated chunks, the metrics, and the limits of the evidence. Raw output of the latest run is in `eval/results.json`. The evaluation calls the answering code directly from my machine, so it does not exercise upload, queue and worker on the deployed site.
 
 ## Known Limitations
 
-- **Intermittent ingestion trigger.** Some uploads never triggered the worker. I did not find the cause. A document that is never picked up stays `uploaded`, because nothing times it out.
+- **Uploads on the deployed site failed until the main app's role was given `sqs:SendMessage`.** I found this after the evaluation, which ran through local scripts under my own credentials. After the permission was added, one test upload went from `uploaded` to `processing` to `ready`. In early October some uploads left a database row but no file in S3 and no worker activity. They may have had the same cause, but I did not confirm it, and the app logs I checked for one of them showed no error line. A document that is never picked up still stays `uploaded`, because nothing times it out.
 - **Overlapping ingestion on the same document can duplicate chunks.**
 - **The word-overlap flag is a weak signal.** It scores each sentence against one passage at a time, so a sentence supported jointly by two passages can be flagged, and the number of flags varied between runs (20, 27 and 13). I reviewed one flagged citation by hand.
 - **Citations are per sentence and coarse**: they don't say which of several cited passages backs which part of a sentence.
@@ -94,7 +94,7 @@ Run the scripts from the project root so Node finds `.env`.
 ## Deployment
 
 1. Create an S3 bucket. Apply `aws-policies/bucket-policy.json` (public read for `/assets/*`) and `aws-policies/cors-config.json` (GET, PUT, POST).
-2. Create an IAM role with `aws-policies/trust-policy.json`, the CloudWatch Logs managed policy, and the two inline policies `s3-permissions-policy.json` and `sqs-permissions-policy.json`.
+2. Create an IAM role with `aws-policies/trust-policy.json`, the CloudWatch Logs managed policy, and three inline policies: `s3-permissions-policy.json`, `sqs-permissions-policy.json` (the worker receives and deletes messages) and `sqs-send-policy.json` (the main app sends them; without it every upload on the deployed site fails).
 3. Create an SQS queue with a visibility timeout of 900 seconds.
 4. Build and deploy the main app: `npm run build`, sync `.output/public` to the bucket, zip `.output/server`, create the function, and use `aws lambda update-function-code` for later deploys. Confirm the `CodeSha256` changes after each deploy.
 5. Bundle and deploy the worker as CommonJS (bundling the AWS SDK as ESM failed at runtime): `npx esbuild src/worker.ts --bundle --platform=node --target=node22 --outfile=worker-dist/index.js --format=cjs`. Zip `worker-dist` and deploy it as a separate function with a 600 second timeout.
